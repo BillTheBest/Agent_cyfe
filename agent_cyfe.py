@@ -1,0 +1,78 @@
+#!/usr/bin/python2.7
+#-*- coding: utf-8 -*-
+import MySQLdb
+import datetime
+import shutil
+import time
+import os
+
+### Registrando data inicial ###
+data = datetime.datetime.now()
+data_dia = data.strftime('%d')
+
+### Criando arquivos ###
+arq_tmp = '/home/helias/Documentos/Script/Buscape_tmp.html'
+arq_current = '/home/helias/Documentos/Script/Buscape_current.html'
+
+### Atribuindo items ###
+tmp = open(arq_tmp,'w')
+tmp.write("Data,Home,Lista Categoria,Lista Produtos,Compara Preços,Login,Check Login,Logout\n")
+tmp.close()
+
+while 1:
+  ### Conexao com o Banco de dados do Zabbix ###
+  conn = MySQLdb.connect(host = "localhost",
+			 user = "root",
+			 passwd = "1234",
+			 db = "zabbix")
+
+  ### Definindo cursor para o banco ###
+  cursor = conn.cursor()
+
+  ### Busca dados no banco MySQL ###
+  cursor.execute("SELECT lastvalue * 1000 FROM zabbix.items WHERE key_='web.test.time[Buscape Site,Home,resp]'")
+  item1 = cursor.fetchone()
+  cursor.execute("SELECT lastvalue * 1000 FROM zabbix.items WHERE key_='web.test.time[Buscape Site,Lista Categoria,resp]'")
+  item2 = cursor.fetchone()
+  cursor.execute("SELECT lastvalue * 1000 FROM zabbix.items WHERE key_='web.test.time[Buscape Site,Lista Produtos,resp]'")
+  item3 = cursor.fetchone()
+  cursor.execute("SELECT lastvalue * 1000 FROM zabbix.items WHERE key_='web.test.time[Buscape Site,Compara Precos,resp]'")
+  item4 = cursor.fetchone()
+  cursor.execute("SELECT lastvalue * 1000 FROM zabbix.items WHERE key_='web.test.time[Buscape Site,Login,resp]'")
+  item5 = cursor.fetchone()		
+  cursor.execute("SELECT lastvalue * 1000 FROM zabbix.items WHERE key_='web.test.time[Buscape Site,Check Login,resp]'")		
+  item6 = cursor.fetchone()		
+  cursor.execute("SELECT lastvalue * 1000 FROM zabbix.items WHERE key_='web.test.time[Buscape Site,Logout,resp]'")		
+  item7 = cursor.fetchone()
+
+  ### Definindo a data da linha ###
+  data = datetime.datetime.now()
+  data_now = data.strftime('%Y%m%d%H%M%S')
+  data_log = data.strftime('%Y%m%d')
+  data_d = data.strftime('%d')
+
+  arq_bkp = '/home/helias/Documentos/Script/Buscape_bkp_%s.html' % data_log
+
+  ### Definindo formato do log ###
+  log = "%s,%.0f,%.0f,%.0f,%.0f,%.0f,%.0f,%.0f\n" % (data_now,item1[0],item2[0],item3[0],item4[0],item5[0],item6[0],item7[0])
+
+  ### Gerando arquivo de log temporario ###	
+  tmp = open(arq_tmp,'a')
+  tmp.write(log)
+  tmp.close()
+  shutil.copyfile(arq_tmp, arq_current)
+  os.remove(arq_tmp)
+
+  if data_d != data_dia:
+    shutil.copyfile(arq_current, arq_bkp)
+    data = datetime.datetime.now()
+    data_now = data.strftime('%Y%m%d%H%M%S')
+    data_dia = data.strftime('%d')
+
+  tmp = open(arq_tmp,'w')
+  tmp.close()
+  shutil.copyfile(arq_current, arq_tmp)
+  os.remove(arq_current)
+
+  time.sleep(10)
+  ### Fim ###     
